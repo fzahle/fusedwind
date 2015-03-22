@@ -82,29 +82,24 @@ class BezierCurve(Curve):
 
 class BezierAirfoilShape(Component):
 
-    # ni = Int(200, iotype='in')
-    # fix_x = Bool(True, iotype='in')
-    # symmLE = Bool(True, iotype='in')
-    # symmTE = Bool(True, iotype='in')
+    ni = Int(200, iotype='in')
+    fix_x = Bool(True, iotype='in')
+    symmLE = Bool(True, iotype='in')
+    symmTE = Bool(True, iotype='in')
 
-    # spline_CPs = Array(iotype='in', units=None, desc='Spline starting control points')
+    afIn = VarTree(AirfoilShape(), iotype='in')
+    spline_CPs = Array(iotype='in', units=None, desc='Spline starting control points')
 
     CPu = Array(iotype='in', fd_form='complex_step', fd_step=1.e-20)
     CPl = Array(iotype='in', fd_form='complex_step', fd_step=1.e-20)
     CPle = Float(iotype='in', fd_form='complex_step', fd_step=1.e-20)
     CPte = Float(iotype='in', fd_form='complex_step', fd_step=1.e-20)
 
-    afIn = VarTree(AirfoilShape(), iotype='in')
-
     afOut = VarTree(AirfoilShape(), iotype='out')
 
     def __init__(self):
         super(BezierAirfoilShape, self).__init__()
 
-        self.ni = 200
-        self.fix_x = True
-        self.symmLE = True
-        self.symmTE = True
         self.fd_form = 'fd'
 
     def execute(self):
@@ -112,12 +107,12 @@ class BezierAirfoilShape(Component):
         print 'CPs', self.CPu
         self.spline_eval()
 
-    # def list_deriv_vars(self):
+    def list_deriv_vars(self):
 
-    #     inputs = ('CPu', 'CPl', 'CPle', 'CPte')
-    #     outputs = ('afOut')
+        inputs = ['CPu', 'CPl', 'CPle', 'CPte']
+        outputs = ['afOut']
 
-    #     return inputs, outputs
+        return inputs, outputs
 
     def fit(self):
 
