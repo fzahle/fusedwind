@@ -18,12 +18,12 @@ class Curve(VariableTree):
     length = Float(desc='Total curve length')
     s = Array(desc='Curve accumulated curve length')
     points = Array(desc='coordinates of curve')
-    ni = Int(desc='Number of points')
+    # ni = Int(desc='Number of points')
 
 
     def __init__(self, points=None):
         super(Curve, self).__init__()
-
+        self.ni = 100
         if points is not None:
             self.initialize(points)
 
@@ -31,16 +31,17 @@ class Curve(VariableTree):
 
             self.points = points
             self.ni = points.shape[0]
+            self.nd = points.shape[1]
 
             self._compute_s()
-            self._compute_dp()
+            # self._compute_dp()
             self._build_splines()
 
     def _compute_s(self):
         """
         compute normalized curve length
         """
-        s = calculate_length(self.points)
+        s = calculate_length(self.points.copy())
         self.length = s[-1]
         self.ds = np.diff(s)
         self.s = s/s[-1]
@@ -49,7 +50,7 @@ class Curve(VariableTree):
     def _compute_dp(self):
         """compute the unit direction vectors along the curve"""
  
-        t1 = np.gradient(self.points[:,:])[0]
+        t1 = np.gradient(self.points.copy())[0]
         self.dp = np.array([t1[i, :] / np.linalg.norm(t1[i, :]) for i in range(t1.shape[0])])
 
     def _build_splines(self):
@@ -230,8 +231,8 @@ class AirfoilShape(Curve):
         interpolate (x,y) at some curve fraction s
         """
 
-        p = np.zeros(2)
-        for i in range(2):
+        p = np.zeros(self.points.shape[1])
+        for i in range(self.points.shape[1]):
             p[i] = self._splines[i](s)
 
         return p
