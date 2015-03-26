@@ -62,8 +62,8 @@ class BezierCurve(Curve):
 
     def _compute(self, C):
 
-        points = np.zeros((self.ni, self.nd), dtype=type(C[0]))
-        self.t = np.linspace(0., 1., self.ni, dtype=type(C[0]))
+        points = np.zeros((self.ni, self.nd), dtype=C.dtype)
+        self.t = np.linspace(0., 1., self.ni, dtype=C.dtype)
         # control point iterator
         _n = xrange(C.shape[0])
 
@@ -90,10 +90,10 @@ class BezierAirfoilShape(Component):
     afIn = VarTree(AirfoilShape(), iotype='in')
     spline_CPs = Array(iotype='in', units=None, desc='Spline starting control points')
 
-    CPu = Array(iotype='in', fd_form='complex_step', fd_step=1.e-20)
-    CPl = Array(iotype='in', fd_form='complex_step', fd_step=1.e-20)
-    CPle = Float(iotype='in', fd_form='complex_step', fd_step=1.e-20)
-    CPte = Float(iotype='in', fd_form='complex_step', fd_step=1.e-20)
+    CPu = Array(iotype='in')
+    CPl = Array(iotype='in')
+    CPle = Float(iotype='in')
+    CPte = Float(iotype='in')
 
     afOut = VarTree(AirfoilShape(), iotype='out')
 
@@ -104,7 +104,16 @@ class BezierAirfoilShape(Component):
 
     def execute(self):
 
-        print 'CPs', self.CPu
+        if 'fd' in self.itername and self.fd_form == 'complex_step':
+            self.CPl = np.array(self.CPl, dtype=np.complex128)
+            self.CPu = np.array(self.CPu, dtype=np.complex128)
+            self.CPle = np.complex128(self.CPle)
+            self.CPte = np.complex128(self.CPte)
+        else:
+            self.CPl = np.array(self.CPl, dtype=np.float64)
+            self.CPu = np.array(self.CPu, dtype=np.float64)
+            self.CPle = np.float64(self.CPle)
+            self.CPte = np.float64(self.CPte)            
         self.spline_eval()
 
     def list_deriv_vars(self):
@@ -116,7 +125,8 @@ class BezierAirfoilShape(Component):
 
     def fit(self):
 
-
+        self.afIn.initialize(self.afIn.points)
+        self.afIn.redistribute(self.ni, dLE=True)
         iLE = np.argmin(self.afIn.points[:, 0])
 
         # lower side
@@ -147,11 +157,7 @@ class BezierAirfoilShape(Component):
         self.nCPs = self.CPl.shape[0] + self.CPu.shape[0]
         self.CPle = 0.5 * (self.CPu[1, 1] - self.CPl[1, 1])
         self.CPte = 0.5 * (self.CPu[-1, 1] - self.CPl[-1, 1])
-        if self.fd_form == 'complex_step':
-            self.CPl = np.array(self.CPl, dtype=np.complex128)
-            self.CPu = np.array(self.CPu, dtype=np.complex128)
-            self.CPle = np.complex128(self.CPle)
-            self.CPte = np.complex128(self.CPte)
+
         self.spline_eval()
 
     def spline_eval(self):
@@ -176,7 +182,7 @@ class BezierAirfoilShape(Component):
         self.spline_ss.update()
         points = self.spline_ps.points[::-1]
         points = np.append(points, self.spline_ss.points[1:])
-        points = points.reshape(points.shape[0]/2,2)
+        points = points.reshape(points.shape[0]/2, 2)
         self.afOut.initialize(points)
 
 

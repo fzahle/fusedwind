@@ -56,9 +56,15 @@ class Curve(VariableTree):
     def _build_splines(self):
 
         self._splines = []
-
-        for j in range(self.points.shape[1]):
-            self._splines.append(NaturalCubicSpline(self.s, self.points[:, j]))
+        if self.points.dtype == np.float64:
+            for j in range(self.points.shape[1]):
+                self._splines.append([NaturalCubicSpline(self.s, self.points[:, j])])
+        elif self.points.dtype == np.complex128:
+            for j in range(self.points.shape[1]):
+                spl = []
+                spl.append(NaturalCubicSpline(self.s, self.points[:, j].real))          
+                spl.append(NaturalCubicSpline(self.s, self.points[:, j].imag))
+                self._splines.append(spl)
 
     def redistribute(self, dist=None, s=None):
 
@@ -68,9 +74,15 @@ class Curve(VariableTree):
             self.s = s
 
         self.ni = self.s.shape[0]
-        points = np.zeros((self.ni, self.points.shape[1]))
-        for i in range(points.shape[1]):
-            points[:, i] = self._splines[i](self.s)
+        points = np.zeros((self.ni, self.points.shape[1]), dtype=self.points.dtype)
+
+        if points.dtype == np.float64:
+            for i in range(points.shape[1]):
+                points[:, i].real = self._splines[i][0](self.s)
+        elif points.dtype == np.complex128:
+            for i in range(points.shape[1]):
+                points[:, i].real = self._splines[i][0](self.s)
+                points[:, i].imag = self._splines[i][1](self.s)
 
         self.initialize(points)
 
@@ -108,16 +120,16 @@ class AirfoilShape(Curve):
 
         res = minimize(self._sdist, (0.5), method='SLSQP', bounds=[(0, 1)])
         self.sLE = res['x'][0]
-        xLE = self._splines[0](self.sLE)
-        yLE = self._splines[1](self.sLE)
+        xLE = self._splines[0][0](self.sLE)
+        yLE = self._splines[1][0](self.sLE)
         self.LE = np.array([xLE, yLE])
         self.curvLE = NaturalCubicSpline(self.s, curvature(self.points))(self.sLE)
         self.chord = np.linalg.norm(self.LE-self.TE)
 
     def _sdist(self, s):
 
-        x = self._splines[0](s)
-        y = self._splines[1](s)
+        x = self._splines[0][0](s)
+        y = self._splines[1][0](s)
         return -((x - self.TE[0])**2 + (y - self.TE[1])**2)**0.5
 
     def leading_edge_dist(self, ni):
@@ -159,7 +171,7 @@ class AirfoilShape(Curve):
         if even:
             dist = [[0, 1./np.float(ni-1), 1], [self.sLE, 1./np.float(ni-1), int(ni*self.sLE)], [1, 1./np.float(ni-1), ni]]
         elif dLE:
-            dist = [[0., dTE, 1], [self.sLE, self.leading_edge_dist(ni), ni / 2], [1., dTE, ni]]
+            dist = [[0., -1, 1], [self.sLE, self.leading_edge_dist(ni), ni / 2], [1., -1, ni]]
 
         super(AirfoilShape, self).redistribute(dist)
 
