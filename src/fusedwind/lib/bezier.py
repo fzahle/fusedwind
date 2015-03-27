@@ -6,7 +6,7 @@ from scipy.optimize import leastsq
 from openmdao.lib.datatypes.api import List, Bool, Array, Instance, Int, Float, VarTree
 from openmdao.main.api import Component
 
-from fusedwind.turbine.geometry_vt import Curve, AirfoilShape
+from fusedwind.turbine.geometry_vt import Curve, AirfoilShape, AirfoilShapeWithProps
 from fusedwind.lib.distfunc import distfunc
 from fusedwind.lib.geom_tools import calculate_length
 from fusedwind.lib.cubicspline import NaturalCubicSpline
@@ -41,7 +41,7 @@ class BezierCurve(Curve):
 
         points = self._compute(self.CPs)
         self._s = calculate_length(points)
-        self._s /= self._s[-1] 
+        self._s /= self._s[-1]
         self.initialize(points)
 
     # def _compute_dp(self):
@@ -95,7 +95,7 @@ class BezierAirfoilShape(Component):
     CPle = Float(iotype='in')
     CPte = Float(iotype='in')
 
-    afOut = VarTree(AirfoilShape(), iotype='out')
+    afOut = VarTree(AirfoilShapeWithProps(), iotype='out')
 
     def __init__(self):
         super(BezierAirfoilShape, self).__init__()
@@ -113,15 +113,16 @@ class BezierAirfoilShape(Component):
             self.CPl = np.array(self.CPl, dtype=np.float64)
             self.CPu = np.array(self.CPu, dtype=np.float64)
             self.CPle = np.float64(self.CPle)
-            self.CPte = np.float64(self.CPte)            
+            self.CPte = np.float64(self.CPte)
         self.spline_eval()
+        self.afOut.compute_props()
 
-    def list_deriv_vars(self):
+    # def list_deriv_vars(self):
 
-        inputs = ['CPu', 'CPl', 'CPle', 'CPte']
-        outputs = ['afOut']
+    #     inputs = ['CPu', 'CPl', 'CPle', 'CPte']
+    #     outputs = ['afOut']
 
-        return inputs, outputs
+    #     return inputs, outputs
 
     def fit(self):
 
@@ -234,12 +235,12 @@ class FitBezier(Component):
             self.CPs = np.zeros((self.nCPs,self.curve_in.nd))
             for i in range(self.curve_in.nd):
                 s = np.linspace(0., 1., self.nCPs)
-                self.CPs[:, i] = np.interp(s, np.asarray(self.curve_in.s, dtype=np.float64), 
+                self.CPs[:, i] = np.interp(s, np.asarray(self.curve_in.s, dtype=np.float64),
                                               np.asarray(self.curve_in.points[:,i], dtype=np.float64))
         else:
             self.nCPs = self.CPs.shape[0]
             if np.sum(self.CPs[:, 1]) == 0.:
-                self.CPs[:, 1] = np.interp(self.CPs[:, 0], np.asarray(self.curve_in.points[:, 0], dtype=np.float64), 
+                self.CPs[:, 1] = np.interp(self.CPs[:, 0], np.asarray(self.curve_in.points[:, 0], dtype=np.float64),
                                                           np.asarray(self.curve_in.points[:, 1], dtype=np.float64))
 
         # anchor first and last CP to start/end points of curve
