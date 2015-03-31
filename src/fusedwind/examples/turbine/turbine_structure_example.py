@@ -22,8 +22,6 @@ top.st_writer.filebase = 'st_test'
 
 top.blade_length = 86.366
 
-top.pf_splines.pfIn = read_blade_planform('data/DTU_10MW_RWT_blade_axis_prebend.dat')
-
 for f in ['data/ffaw3241.dat',
           'data/ffaw3301.dat',
           'data/ffaw3360.dat',

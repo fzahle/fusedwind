@@ -39,6 +39,8 @@ def configure_bladesurface(cls, pfIn, planform_nC=8, span_ni=50, chord_ni=300):
         Instance of an OpenMDAO Assembly that the analysis is run from
     planform_nC: int
         number of spline control points for the planform variables
+    span_ni: int
+        number of points for the output planform vartree
     """
 
     from fusedwind.turbine.geometry import LoftedBladeSurface

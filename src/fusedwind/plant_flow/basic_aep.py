@@ -29,7 +29,7 @@ class aep_assembly(Assembly):
     # parameters
     array_losses = Float(0.059, iotype='in', desc='energy losses due to turbine interactions - across entire plant')
     other_losses = Float(0.0, iotype='in', desc='energy losses due to blade soiling, electrical, etc')
-    availability = Float(0.94, iotype='in', desc='average annual availbility of wind turbines at plant')
+    availability = Float(0.94, iotype='in', desc='average annual availability of wind turbines at plant')
     turbine_number = Int(100, iotype='in', desc='total number of wind turbines at the plant')
     machine_rating = Float(5000.0, iotype='in', desc='machine rating of turbine')
 
@@ -68,7 +68,7 @@ class BasicAEP(Component):
     # parameters
     array_losses = Float(0.059, iotype='in', desc='energy losses due to turbine interactions - across entire plant')
     other_losses = Float(0.0, iotype='in', desc='energy losses due to blade soiling, electrical, etc')
-    availability = Float(0.94, iotype='in', desc='average annual availbility of wind turbines at plant')
+    availability = Float(0.94, iotype='in', desc='average annual availability of wind turbines at plant')
     turbine_number = Int(100, iotype='in', desc='total number of wind turbines at the plant')
     machine_rating = Float(5000.0, iotype='in', desc='machine rating of turbine')
 
@@ -199,7 +199,7 @@ class aep_weibull_assembly(Assembly):
     # parameters
     array_losses = Float(0.059, iotype='in', desc = 'energy losses due to turbine interactions - across entire plant')
     other_losses = Float(0.0, iotype='in', desc = 'energy losses due to blade soiling, electrical, etc')
-    availability = Float(0.94, iotype='in', desc = 'average annual availbility of wind turbines at plant')
+    availability = Float(0.94, iotype='in', desc = 'average annual availability of wind turbines at plant')
     turbine_number = Int(100, iotype='in', desc = 'total number of wind turbines at the plant')
 
     # outputs
@@ -231,8 +231,8 @@ class aep_weibull_assembly(Assembly):
         self.connect('cdf.F', 'aep.CDF_V')
 
         # outputs
-        self.connect('aep.gross_aep', 'gross_aep')
-        self.connect('aep.net_aep', 'net_aep')
+        self.connect('aep.gross_aep / 1000.0', 'gross_aep') #TODO: change aep outputs to Watts at this level
+        self.connect('aep.net_aep / 1000.0', 'net_aep')
         self.connect('aep.capacity_factor','capacity_factor')
 
 @implement_base(BaseAEPAggregator_NoFlow)
@@ -247,12 +247,12 @@ class aep_component(Component):
     # parameters
     array_losses = Float(0.059, iotype='in', desc='energy losses due to turbine interactions - across entire plant')
     other_losses = Float(0.0, iotype='in', desc='energy losses due to blade soiling, electrical, etc')
-    availability = Float(0.94, iotype='in', desc='average annual availbility of wind turbines at plant')
+    availability = Float(0.94, iotype='in', desc='average annual availability of wind turbines at plant')
     turbine_number = Int(100, iotype='in', desc='total number of wind turbines at the plant')
 
     # outputs
-    gross_aep = Float(iotype='out', desc='Gross Annual Energy Production before availability and loss impacts', unit='kWh')
-    net_aep = Float(iotype='out', desc='Net Annual Energy Production after availability and loss impacts', unit='kWh')
+    gross_aep = Float(iotype='out', desc='Gross Annual Energy Production before availability and loss impacts', units='kW*h')
+    net_aep = Float(iotype='out', desc='Net Annual Energy Production after availability and loss impacts', units='kW*h')
     capacity_factor = Float(iotype='out', desc='plant capacity factor')
 
     def __init__(self):
