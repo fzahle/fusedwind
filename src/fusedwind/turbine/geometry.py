@@ -9,6 +9,7 @@ from fusedwind.lib.distfunc import distfunc
 from fusedwind.lib.geom_tools import RotMat, dotXC, calculate_length, curvature
 from fusedwind.turbine.geometry_vt import Curve, BladePlanformVT, BladeSurfaceVT, BlendAirfoilShapes
 from fusedwind.interface import base, implement_base
+from fusedwind.lib.utils import init_vartree
 
 
 class SplineBase(object):
@@ -172,7 +173,7 @@ class FFDSplineComponentBase(Component):
     P = Array(iotype='out', desc='Output curve')
     dPds = Array(iotype='out', desc='Curvature')
 
-    def __init__(self, nC=8):
+    def __init__(self, ni, nC=8):
         super(FFDSplineComponentBase, self).__init__()
 
         self.init_called = False
@@ -186,6 +187,8 @@ class FFDSplineComponentBase(Component):
                                           desc='spline control points of cross-sectional curve fraction'
                                                'ending point of region'))
 
+        self.P = np.zeros(ni)
+        self.dPds = np.zeros(ni)
         self.set_spline(self.spline_type)
 
     def set_spline(self, spline_type):
@@ -316,8 +319,6 @@ class SplinedBladePlanform(Assembly):
         if self.blade_length_ref == 0.:
             self.blade_length_ref = self.blade_length
 
-        self.configure_splines()
-
     def compute_x(self):
 
         # simple distfunc for now
@@ -325,16 +326,18 @@ class SplinedBladePlanform(Assembly):
 
     def configure_splines(self):
 
-
         if hasattr(self, 'chord_C'):
             return
+
+        self.pfOut = init_vartree(self.pfOut, self.span_ni)
+
         if self.Cx.shape[0] == 0:
             self.Cx = np.linspace(0, 1, self.nC)
         else:
             self.nC = self.Cx.shape[0]
 
         self.compute_x()
-        self.pfOut = self.pfIn.copy()
+
         for vname in self.pfIn.list_vars():
             if vname in ['athick', 'blade_length']:
                 continue
@@ -346,7 +349,7 @@ class SplinedBladePlanform(Assembly):
             if vname == 's':
                 self.connect('x_dist', 'pfOut.s')
             else:
-                spl = self.add(sname, FFDSplineComponentBase(self.nC))
+                spl = self.add(sname, FFDSplineComponentBase(self.span_ni, self.nC))
                 self.driver.workflow.add(sname)
                 # spl.log_level = logging.DEBUG
                 self.connect('x_dist', sname + '.x')
@@ -360,6 +363,7 @@ class SplinedBladePlanform(Assembly):
                     self.connect(sname + '.P', 'pfOut.' + vname)
                 self.create_passthrough(sname + '.C', alias=sname + '_C')
                 self.create_passthrough(sname + '.dPds', alias=sname + '_dPds')
+
 
         self.connect('chord.P*rthick.P', 'pfOut.athick')
 
@@ -388,6 +392,15 @@ class LoftedBladeSurface(Component):
 
     surfout = VarTree(BladeSurfaceVT(), iotype='out')
     surfnorot = VarTree(BladeSurfaceVT(), iotype='out')
+
+    def __init__(self, chord_ni, span_ni):
+        super(LoftedBladeSurface, self).__init__()
+
+        self.chord_ni = chord_ni
+        self.span_ni = span_ni
+
+        self.surfout.surface = np.zeros((self.chord_ni, self.span_ni, 3))
+        self.surfnorot.surface = np.zeros((self.chord_ni, self.span_ni, 3))
 
     def execute(self):
 

@@ -11,6 +11,7 @@ from fusedwind.turbine.geometry import RedistributedBladePlanform, SplineCompone
 from fusedwind.turbine.structure_vt import BladeStructureVT3D, CrossSectionStructureVT, BeamStructureVT
 from fusedwind.turbine.rotoraero_vt import LoadVectorCaseList
 from fusedwind.interface import base, implement_base
+from fusedwind.lib.utils import init_vartree
 
 
 @base
@@ -465,6 +466,8 @@ class SplinedBladeStructure(Assembly):
         self.create_passthrough('pf.pfIn')
         self.create_passthrough('pf.pfOut')
         self.connect('x', 'pf.x')
+        self.connect('x', 'st3dOut.x')
+
 
     def configure_bladestructure(self):
         """
@@ -482,7 +485,10 @@ class SplinedBladeStructure(Assembly):
             self.nC = self.Cx.shape[0]
 
         self.st3dOut = self.st3dIn.copy()
-        self.connect('x', 'st3dOut.x')
+
+        # initialize output sizes
+        self.st3dOut = init_vartree(self.st3dOut, self.span_ni)
+        self.pf.pfOut = init_vartree(self.pf.pfOut, self.span_ni)
 
         sec = self.st3dIn
         nr = len(sec.regions)

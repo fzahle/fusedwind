@@ -2,7 +2,7 @@
 from fusedwind.interface import base, implement_base
 
 
-def configure_planform(cls, planform_nC):
+def configure_planform(cls, pfIn, planform_nC=8, span_ni=50):
     """
     method that adds a ``SplinedBladePlanform`` instance to the assembly
 
@@ -11,7 +11,9 @@ def configure_planform(cls, planform_nC):
     cls: class instance
         Instance of an OpenMDAO Assembly that the analysis is run from
     planform_nC: int
-        number of spline control points for the planform variables  
+        number of spline control points for the planform variables
+    span_ni: int
+        number of points for the output planform vartree 
     """
 
     from fusedwind.turbine.geometry import SplinedBladePlanform
@@ -19,12 +21,15 @@ def configure_planform(cls, planform_nC):
     cls.add('pf_splines', SplinedBladePlanform())
     cls.driver.workflow.add('pf_splines')
     cls.pf_splines.nC = planform_nC
+    cls.pf_splines.pfIn = pfIn
 
     cls.create_passthrough('pf_splines.blade_length')
     cls.create_passthrough('pf_splines.span_ni')
+    cls.span_ni = span_ni
+    cls.pf_splines.configure_splines()
 
 
-def configure_bladesurface(cls, planform_nC):
+def configure_bladesurface(cls, pfIn, planform_nC=8, span_ni=50, chord_ni=300):
     """
     method that adds a ``LoftedBladeSurface`` instance to the assembly
 
@@ -39,16 +44,16 @@ def configure_bladesurface(cls, planform_nC):
     from fusedwind.turbine.geometry import LoftedBladeSurface
 
     if not hasattr(cls, 'pf_splines'):
-        configure_planform(cls, planform_nC)
+        configure_planform(cls, pfIn, planform_nC, span_ni)
 
-    cls.add('blade_surface', LoftedBladeSurface())
+    cls.add('blade_surface', LoftedBladeSurface(chord_ni, span_ni))
     cls.driver.workflow.add('blade_surface')
 
     cls.connect('pf_splines.pfOut', 'blade_surface.pf')
     cls.connect('span_ni', 'blade_surface.span_ni')
 
 
-def configure_bladestructure(cls, file_base, planform_nC=8, structure_nC=8):
+def configure_bladestructure(cls, file_base, structure_nC=8, structure_ni=12):
     """
     method for configuring an assembly with 
     blade geometry and structural parameterization
@@ -67,7 +72,7 @@ def configure_bladestructure(cls, file_base, planform_nC=8, structure_nC=8):
     """
 
     if not hasattr(cls, 'blade_surface'):
-        configure_bladesurface(cls, planform_nC)
+        raise RuntimeError('blade_surface needs to be configured before\ncalling this method')
 
     from fusedwind.turbine.blade_structure import BladeStructureReader, \
                                                   BladeStructureWriter, \
@@ -98,4 +103,7 @@ def configure_bladestructure(cls, file_base, planform_nC=8, structure_nC=8):
 
     cls.st_splines.st3dIn = cls.st_reader.st3d.copy()
     cls.st_splines.nC = structure_nC
+    cls.st_splines.span_ni = structure_ni
     cls.st_splines.configure_bladestructure()
+    cls.st_builder.st3d = cls.st_splines.st3dOut
+    cls.st_writer.st3d = cls.st_splines.st3dOut
