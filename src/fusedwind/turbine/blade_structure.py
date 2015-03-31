@@ -481,6 +481,8 @@ class BeamStructureWriter(Component):
         fid.close()
 
 
+from fusedwind.turbine.geometry_vt import BladePlanformVT
+
 @implement_base(ModifyBladeStructureBase)
 class SplinedBladeStructure(Assembly):
     """
@@ -498,6 +500,7 @@ class SplinedBladeStructure(Assembly):
     span_ni = Int(20, iotype='in', desc='Number of discrete points along span')
     nC = Int(8, iotype='in', desc='Number of spline control points along span')
     Cx = Array(iotype='in', desc='spanwise distribution of spline control points')
+    pfOut = VarTree(BladePlanformVT(), iotype='in')
     st3dIn = VarTree(BladeStructureVT3D(), iotype='in',
                                          desc='Vartree containing initial discrete definition of blade structure')
     st3dOut = VarTree(BladeStructureVT3D(), iotype='out',
@@ -516,11 +519,11 @@ class SplinedBladeStructure(Assembly):
 
         self._nsec = 0
 
-        self.add('pf', RedistributedBladePlanform())
-        self.driver.workflow.add('pf')
-        self.create_passthrough('pf.pfIn')
-        self.create_passthrough('pf.pfOut')
-        self.connect('x', 'pf.x')
+        # self.add('pf', RedistributedBladePlanform())
+        # self.driver.workflow.add('pf')
+        # self.create_passthrough('pf.pfIn')
+        # self.create_passthrough('pf.pfOut')
+        # self.connect('x', 'pf.x')
         self.connect('x', 'st3dOut.x')
 
 
@@ -543,14 +546,14 @@ class SplinedBladeStructure(Assembly):
 
         # initialize output sizes
         self.st3dOut = init_vartree(self.st3dOut, self.span_ni)
-        self.pf.pfOut = init_vartree(self.pf.pfOut, self.span_ni)
+        # self.pf.pfOut = init_vartree(self.pf.pfOut, self.span_ni)
 
         sec = self.st3dIn
         nr = len(sec.regions)
         for ip in range(nr + 1):
             dpname = 'DP%02d' % ip
             # division point spline
-            DPc = self.add(dpname, FFDSplineComponentBase(self.nC))
+            DPc = self.add(dpname, FFDSplineComponentBase(self.span_ni, self.nC))
             self.driver.workflow.add(dpname)
             # DPc.log_level = logging.DEBUG
             DPc.set_spline(spline_type)
@@ -570,7 +573,7 @@ class SplinedBladeStructure(Assembly):
                     layer = getattr(region, lname)
                     lcname = 'r%02d%s' % (ip, lname)
                     # thickness spline
-                    lcomp = self.add(lcname+'T', FFDSplineComponentBase(self.nC))
+                    lcomp = self.add(lcname+'T', FFDSplineComponentBase(self.span_ni, self.nC))
                     self.driver.workflow.add(lcname+'T')
                     # lcomp.log_level = logging.DEBUG
                     lcomp.set_spline(spline_type)
@@ -580,7 +583,7 @@ class SplinedBladeStructure(Assembly):
                     self.connect('Cx', lcname+'T' + '.Cx')
                     self.connect('%sT.P'%lcname, '.'.join(['st3dOut', rname, lname, 'thickness']))
                     # angle spline
-                    lcomp = self.add(lcname+'A', FFDSplineComponentBase(self.nC))
+                    lcomp = self.add(lcname+'A', FFDSplineComponentBase(self.span_ni, self.nC))
                     self.driver.workflow.add(lcname+'A')
                     # lcomp.log_level = logging.DEBUG
                     lcomp.set_spline(spline_type)
@@ -598,7 +601,7 @@ class SplinedBladeStructure(Assembly):
                 layer = getattr(web, lname)
                 lcname = '%s%s' % (wname, lname)
                 # thickness spline
-                lcomp = self.add(lcname+'T', FFDSplineComponentBase(self.nC))
+                lcomp = self.add(lcname+'T', FFDSplineComponentBase(self.span_ni, self.nC))
                 # lcomp.log_level = logging.DEBUG
                 self.driver.workflow.add(lcname+'T')
                 lcomp.set_spline(spline_type)
@@ -609,7 +612,7 @@ class SplinedBladeStructure(Assembly):
                 self.connect('%sT.P'%lcname, '.'.join(['st3dOut', wname, lname, 'thickness']))
                 self.create_passthrough(lcname+'T' + '.C', alias=lcname+'T' + '_C')
                 # angle spline
-                lcomp = self.add(lcname+'A', FFDSplineComponentBase(self.nC))
+                lcomp = self.add(lcname+'A', FFDSplineComponentBase(self.span_ni, self.nC))
                 # lcomp.log_level = logging.DEBUG
                 self.driver.workflow.add(lcname+'A')
                 lcomp.set_spline(spline_type)
@@ -644,7 +647,7 @@ class SplinedBladeStructure(Assembly):
                     width[ix] *= -1.
                     self._logger.warning('switching DPs %i %i for section %i' %
                                          (i, i + 1, ix))
-            region.width = width * self.pf.pfOut.chord * self.pfOut.blade_length
+            region.width = width * self.pfOut.chord * self.pfOut.blade_length
             region.thickness = np.zeros(self.st3dOut.x.shape)
             for layer in region.layers:
                 region.thickness += np.maximum(0., getattr(region, layer).thickness)

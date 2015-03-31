@@ -80,6 +80,8 @@ def configure_bladestructure(cls, file_base, structure_nC=8, structure_ni=12):
                                                   BladeStructureWriter, \
                                                   SplinedBladeStructure, \
                                                   BladeStructureCSBuilder
+    from fusedwind.turbine.geometry import RedistributedBladePlanform
+
 
     cls.add('st_reader', BladeStructureReader())
     cls.add('st_splines', SplinedBladeStructure())
@@ -89,8 +91,18 @@ def configure_bladestructure(cls, file_base, structure_nC=8, structure_ni=12):
     cls.driver.workflow.add(['st_splines',
                              'st_builder', 
                              'st_writer'])
+    cls.create_passthrough('st_splines.x', alias='st_x')
 
-    cls.connect('blade_surface.pf', 'st_splines.pfIn')
+    cls.add('st_pf', RedistributedBladePlanform())
+    cls.driver.workflow.add('st_pf')
+    from fusedwind.lib.utils import init_vartree
+    cls.st_pf.pfOut = init_vartree(cls.st_pf.pfOut, structure_ni)
+
+    cls.connect('st_x', 'st_pf.x')
+
+    cls.connect('pf_splines.pfOut', 'st_pf.pfIn')
+
+    cls.connect('st_pf.pfOut', 'st_splines.pfOut')
     cls.connect('blade_length', 'st_builder.blade_length')
     # connect the blade structure vartrees through the chain
     # of components

@@ -386,7 +386,7 @@ class ComputeDist(Component):
 
     def execute(self):
 
-        if self.x_dist.shape[0] > 0:
+        if np.sum(self.x_dist) > 0:
             self.x = self.x_dist
         else:
             self.x = distfunc([[0., -1, 1], [1., 0.2 * 1./self.span_ni, self.span_ni]])
@@ -399,7 +399,7 @@ class ScaleChord(Component):
         '*blade_length/blade_length_ref', 'pfOut.' + vname)
     """
 
-    scaler = Float(iotype='in')
+    scaler = Float(1., iotype='in')
     cIn = Array(iotype='in')
     cOut = Array(iotype='out')
 
@@ -428,7 +428,7 @@ class ComputeSmax(Component):
     x = Array(iotype='in')
     y = Array(iotype='in')
     z = Array(iotype='in')
-    smax = Float(iotype='in')
+    smax = Float(iotype='out')
 
     def execute(self):
 
@@ -445,29 +445,18 @@ class SplinedBladePlanform(Assembly):
     Cx = Array(iotype='in', desc='spanwise distribution of spline control points')
 
     blade_length = Float(1., iotype='in')
-    blade_length_ref = Float(iotype='in')
+    blade_length_ref = Float(-1., iotype='in')
 
     span_ni = Int(50, iotype='in')
 
     pfIn = VarTree(BladePlanformVT(), iotype='in')
     pfOut = VarTree(BladePlanformVT(), iotype='out')
 
-    def __init__(self):
-        super(SplinedBladePlanform, self).__init__()
-        
-        self.blade_length_ref = 0.
-
-        self.add('compute_x', ComputeDist())
-        self.driver.workflow.add('compute_x')
-        self.connect('span_ni', 'compute_x.span_ni')
-        self.connect('compute_x.x', 'pfOut.s')
-        self.create_passthrough('compute_x.x_dist')
-
     def _pre_execute(self):
         super(SplinedBladePlanform, self)._pre_execute()
 
         # set reference length first time this comp is executed
-        if self.blade_length_ref == 0.:
+        if self.blade_length_ref == -1.:
             self.blade_length_ref = self.blade_length
 
     def configure_splines(self, spline_type='pchip'):
@@ -476,6 +465,14 @@ class SplinedBladePlanform(Assembly):
         if hasattr(self, 'chord_C'):
             return
 
+        self.add('compute_x', ComputeDist())
+        self.driver.workflow.add('compute_x')
+        self.connect('span_ni', 'compute_x.span_ni')
+        self.connect('compute_x.x', 'pfOut.s')
+        self.create_passthrough('compute_x.x_dist')
+        self.compute_x.x = np.zeros(self.span_ni)
+        self.x_dist = np.zeros(self.span_ni)
+
         self.pfOut = init_vartree(self.pfOut, self.span_ni)
 
         if self.Cx.shape[0] == 0:
@@ -483,10 +480,7 @@ class SplinedBladePlanform(Assembly):
         else:
             self.nC = self.Cx.shape[0]
 
-
         self.connect('blade_length', 'pfOut.blade_length')
-
-
 
         for vname in self.pfIn.list_vars():
             if vname in ['s', 'smax', 'athick', 'blade_length']:
@@ -510,6 +504,7 @@ class SplinedBladePlanform(Assembly):
                 self.connect('chord.P', 'scaleC.cIn')
                 self.connect('blade_length/blade_length_ref', 'scaleC.scaler')
                 self.connect('scaleC.cOut', 'pfOut.chord')
+                self.scaleC.cOut = np.zeros(self.span_ni)
                 # self.connect(sname + '.P'+
                 #     '*blade_length/blade_length_ref', 'pfOut.' + vname)
             else:
@@ -522,6 +517,8 @@ class SplinedBladePlanform(Assembly):
         self.connect('chord.P', 'athick.chord')
         self.connect('rthick.P', 'athick.rthick')
         self.connect('athick.athick', 'pfOut.athick')
+        self.athick.athick = np.zeros(self.span_ni)
+
         self.add('smax', ComputeSmax())
         self.driver.workflow.add('smax')
         self.connect('x.P', 'smax.x')

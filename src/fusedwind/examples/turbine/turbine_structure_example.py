@@ -41,7 +41,7 @@ top.st_splines.Cx = [0, 0.2, 0.4, 0.75, 1.]
 
 # spanwise distribution of points where
 # cross-sectional structure vartrees will be created
-top.st_splines.x = np.linspace(0, 1, 12)
+top.st_x = np.linspace(0, 1, 12)
 
 top.run()
 
