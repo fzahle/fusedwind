@@ -459,7 +459,7 @@ class SplinedBladePlanform(Assembly):
         if self.blade_length_ref == -1.:
             self.blade_length_ref = self.blade_length
 
-    def configure_splines(self, spline_type='pchip'):
+    def configure_splines(self, spline_type='bezier'):
 
 
         if hasattr(self, 'chord_C'):

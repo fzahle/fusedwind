@@ -711,6 +711,10 @@ class BladeStructureCSBuilder(BladeStructureBuilderBase):
                                          'vartrees')
 
     def execute(self):
+
+        self.generate_cs2d(self.st3d)
+
+    def generate_cs2d(self, st3d):
         """
         generate cross sections at every spanwise node of the st3d vartree
         """
@@ -718,9 +722,9 @@ class BladeStructureCSBuilder(BladeStructureBuilderBase):
         # clear list of outputs!
         self.cs2d = []
 
-        ni = self.st3d.x.shape[0]
+        ni = st3d.x.shape[0]
         for i in range(ni):
-            x = self.st3d.x[i]
+            x = st3d.x[i]
             # print 'adding section at r/R = %2.2f' % x 
             st2d = CrossSectionStructureVT()
             st2d.s = x * self.blade_length
@@ -730,66 +734,57 @@ class BladeStructureCSBuilder(BladeStructureBuilderBase):
                 st2d.airfoil.initialize(airfoil)
             except:
                 pass
-            for ir, rname in enumerate(self.st3d.regions):
-                reg = getattr(self.st3d, rname)
+            for ir, rname in enumerate(st3d.regions):
+                reg = getattr(st3d, rname)
                 if reg.thickness[i] == 0.:
                     print 'zero thickness region!', rname
                     # continue
-                DP0 = getattr(self.st3d, 'DP%02d' % ir)
-                DP1 = getattr(self.st3d, 'DP%02d' % (ir + 1))
+                DP0 = getattr(st3d, 'DP%02d' % ir)
+                DP1 = getattr(st3d, 'DP%02d' % (ir + 1))
                 r = st2d.add_region(rname.upper())
                 st2d.DPs.append(DP0[i])
                 r.s0 = DP0[i]
                 r.s1 = DP1[i]
                 for lname in reg.layers:
                     lay = getattr(reg, lname)
-                    if lay.thickness[i] > 1.e-5: 
-                        l = r.add_layer(lname)
-                        # try:
-                        lnamebase = lname.translate(None, digits)
-                        st2d.add_material(lnamebase, self.get_material(lname).copy())
-                        # except:
-                            # raise RuntimeError('Material %s not in materials list' % lname)
-                        l.materialname = lnamebase
-                        l.thickness = max(0., lay.thickness[i])
-                        try:
-                            l.angle = lay.angle[i]
-                        except:
-                            l.angle = 0.
+                    l = r.add_layer(lname)
+                    lnamebase = lname.translate(None, digits)
+                    l.materialname = lnamebase
+                    l.thickness = max(0., lay.thickness[i])
+                    try:
+                        l.angle = lay.angle[i]
+                    except:
+                        l.angle = 0.
 
             st2d.DPs.append(DP1[i])
-            for ir, rname in enumerate(self.st3d.webs):
-                reg = getattr(self.st3d, rname)
+            for ir, rname in enumerate(st3d.webs):
+                reg = getattr(st3d, rname)
                 if reg.thickness[i] == 0.:
                     continue
                 r = st2d.add_web(rname.upper())
                 try:
-                    DP0 = getattr(self.st3d, 'DP%02d' % self.st3d.iwebs[ir][0])
+                    DP0 = getattr(st3d, 'DP%02d' % st3d.iwebs[ir][0])
                 except:
-                    DP0 = getattr(self.st3d, 'DP%02d' % (len(self.st3d.regions) + self.st3d.iwebs[ir][0] + 1))
+                    DP0 = getattr(st3d, 'DP%02d' % (len(st3d.regions) + st3d.iwebs[ir][0] + 1))
                 try:
-                    DP1 = getattr(self.st3d, 'DP%02d' % self.st3d.iwebs[ir][1])
+                    DP1 = getattr(st3d, 'DP%02d' % st3d.iwebs[ir][1])
                 except:
-                    DP1 = getattr(self.st3d, 'DP%02d' % (len(self.st3d.regions) + self.st3d.iwebs[ir][1] + 1))
+                    DP1 = getattr(st3d, 'DP%02d' % (len(st3d.regions) + st3d.iwebs[ir][1] + 1))
                 r.s0 = DP0[i] 
                 r.s1 = DP1[i]
                 for lname in reg.layers:
                     lay = getattr(reg, lname)
-                    if lay.thickness[i] > 1.e-5:
-                        l = r.add_layer(lname)
-                        try:
-                            lnamebase = lname.translate(None, digits)
-                            st2d.add_material(lnamebase, self.get_material(lname).copy())
-                        except:
-                            raise RuntimeError('Material %s not in materials list' % lname)
-                        l.materialname = lnamebase
-                        l.thickness = max(0., lay.thickness[i])
-                        try:
-                            l.angle = lay.angle[i]
-                        except:
-                            l.angle = 0.
+                    l = r.add_layer(lname)
+                    lnamebase = lname.translate(None, digits)
+                    l.materialname = lnamebase
+                    l.thickness = max(0., lay.thickness[i])
+                    try:
+                        l.angle = lay.angle[i]
+                    except:
+                        l.angle = 0.
 
             self.cs2d.append(st2d)
+            self.cs2d.materials = st3d.materials.copy()
 
 
 @base

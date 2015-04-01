@@ -228,7 +228,7 @@ class BladeStructureVT3D(VariableTree):
     webs = List(desc='List of names of webs')
     iwebs = List(desc='List of DP indices connecting webs to the surface')
     DPs = List(desc='Names of division point curves')
-    materials = Dict()
+    materials = Dict(desc='Dictionary of MaterialProps vartrees')
 
     def configure_regions(self, nr, names=[]):
 
