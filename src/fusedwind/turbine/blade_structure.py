@@ -626,8 +626,6 @@ class SplinedBladeStructure(Assembly):
         # copy materials to output VT
         self.st3dOut.materials = self.st3dIn.materials.copy()
 
-
-
     def _post_execute(self):
         """
         update all thicknesses and region widths
@@ -783,8 +781,8 @@ class BladeStructureCSBuilder(BladeStructureBuilderBase):
                     except:
                         l.angle = 0.
 
-            self.cs2d.append(st2d)
-            self.cs2d.materials = st3d.materials.copy()
+            st2d.materials = st3d.materials.copy()
+            self.cs2d.append(st2d)            
 
 
 @base
