@@ -34,7 +34,7 @@ class Curve(VariableTree):
             self.nd = points.shape[1]
 
             self._compute_s()
-            # self._compute_dp()
+            self._compute_dp()
             self._build_splines()
 
     def _compute_s(self):
