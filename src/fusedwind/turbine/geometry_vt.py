@@ -18,12 +18,12 @@ class Curve(VariableTree):
     length = Float(desc='Total curve length')
     s = Array(desc='Curve accumulated curve length')
     points = Array(desc='coordinates of curve')
-    ni = Int(desc='Number of points')
+    # ni = Int(desc='Number of points')
 
 
     def __init__(self, points=None):
         super(Curve, self).__init__()
-
+        self.ni = 100
         if points is not None:
             self.initialize(points)
 
@@ -31,16 +31,17 @@ class Curve(VariableTree):
 
             self.points = points
             self.ni = points.shape[0]
+            self.nd = points.shape[1]
 
             self._compute_s()
-            self._compute_dp()
+            # self._compute_dp()
             self._build_splines()
 
     def _compute_s(self):
         """
         compute normalized curve length
         """
-        s = calculate_length(self.points)
+        s = calculate_length(self.points.copy())
         self.length = s[-1]
         self.ds = np.diff(s)
         self.s = s/s[-1]
@@ -49,15 +50,21 @@ class Curve(VariableTree):
     def _compute_dp(self):
         """compute the unit direction vectors along the curve"""
  
-        t1 = np.gradient(self.points[:,:])[0]
+        t1 = np.gradient(self.points.copy())[0]
         self.dp = np.array([t1[i, :] / np.linalg.norm(t1[i, :]) for i in range(t1.shape[0])])
 
     def _build_splines(self):
 
         self._splines = []
-
-        for j in range(self.points.shape[1]):
-            self._splines.append(NaturalCubicSpline(self.s, self.points[:, j]))
+        if self.points.dtype == np.float64:
+            for j in range(self.points.shape[1]):
+                self._splines.append([NaturalCubicSpline(self.s, self.points[:, j])])
+        elif self.points.dtype == np.complex128:
+            for j in range(self.points.shape[1]):
+                spl = []
+                spl.append(NaturalCubicSpline(self.s, self.points[:, j].real))          
+                spl.append(NaturalCubicSpline(self.s, self.points[:, j].imag))
+                self._splines.append(spl)
 
     def redistribute(self, dist=None, s=None):
 
@@ -67,9 +74,15 @@ class Curve(VariableTree):
             self.s = s
 
         self.ni = self.s.shape[0]
-        points = np.zeros((self.ni, self.points.shape[1]))
-        for i in range(points.shape[1]):
-            points[:, i] = self._splines[i](self.s)
+        points = np.zeros((self.ni, self.points.shape[1]), dtype=self.points.dtype)
+
+        if points.dtype == np.float64:
+            for i in range(points.shape[1]):
+                points[:, i].real = self._splines[i][0](self.s)
+        elif points.dtype == np.complex128:
+            for i in range(points.shape[1]):
+                points[:, i].real = self._splines[i][0](self.s)
+                points[:, i].imag = self._splines[i][1](self.s)
 
         self.initialize(points)
 
@@ -107,16 +120,16 @@ class AirfoilShape(Curve):
 
         res = minimize(self._sdist, (0.5), method='SLSQP', bounds=[(0, 1)])
         self.sLE = res['x'][0]
-        xLE = self._splines[0](self.sLE)
-        yLE = self._splines[1](self.sLE)
+        xLE = self._splines[0][0](self.sLE)
+        yLE = self._splines[1][0](self.sLE)
         self.LE = np.array([xLE, yLE])
         self.curvLE = NaturalCubicSpline(self.s, curvature(self.points))(self.sLE)
         self.chord = np.linalg.norm(self.LE-self.TE)
 
     def _sdist(self, s):
 
-        x = self._splines[0](s)
-        y = self._splines[1](s)
+        x = self._splines[0][0](s)
+        y = self._splines[1][0](s)
         return -((x - self.TE[0])**2 + (y - self.TE[1])**2)**0.5
 
     def leading_edge_dist(self, ni):
@@ -158,7 +171,7 @@ class AirfoilShape(Curve):
         if even:
             dist = [[0, 1./np.float(ni-1), 1], [self.sLE, 1./np.float(ni-1), int(ni*self.sLE)], [1, 1./np.float(ni-1), ni]]
         elif dLE:
-            dist = [[0., dTE, 1], [self.sLE, self.leading_edge_dist(ni), ni / 2], [1., dTE, ni]]
+            dist = [[0., -1, 1], [self.sLE, self.leading_edge_dist(ni), ni / 2], [1., -1, ni]]
 
         super(AirfoilShape, self).redistribute(dist)
 
@@ -230,8 +243,8 @@ class AirfoilShape(Curve):
         interpolate (x,y) at some curve fraction s
         """
 
-        p = np.zeros(2)
-        for i in range(2):
+        p = np.zeros(self.points.shape[1])
+        for i in range(self.points.shape[1]):
             p[i] = self._splines[i](s)
 
         return p
@@ -261,6 +274,116 @@ class AirfoilShape(Curve):
             points[i,1] = points[i,1] - np.interp(points[i, 0], s, h)
 
         return AirfoilShape(points)
+
+
+@implement_base(AirfoilShape)
+class AirfoilShapeWithProps(AirfoilShape):
+    """
+    Base class for airfoil shapes.
+
+    The class automatically computes the LE and TE
+    and can redistribute the points smoothly along the surface.
+    Points along the surface need to be defined starting at the
+    TE pressure side ending at the TE suction side.
+    """
+
+    LE = Array(desc='Leading edge coordinates')
+    TE = Array(desc='Trailing edge coordinates')
+    sLE = Float(desc='Leading edge curve fraction')
+    chord = Float(desc='chord length')
+
+    ndiv = Int(200, desc='number of interpolation points along chord line')
+    x = Array(units='m', desc='x-coordinate distribution')
+    ys = Array(units='m', desc='suction side y-coordinates')
+    yp = Array(units='m', desc='pressure side y-coordinates')
+    t = Array(units='m', desc='Thickness distribution')
+    mean = Array(units='m', desc='Mean line distribution')
+    mean_angle = Array(units='deg', desc='Mean line angle relative to chord')
+    tmax = Float(0.0, units='m', desc='Maximum thickness')
+    tmin = Float(0.0, units='m', desc='Minimum thickness')
+    tmax_p = Float(0.0, units='m', desc='Pressure side maximum thickness')
+    tmax_s = Float(0.0, units='m', desc='Suction side maximum thickness')
+    curv_s = Array(units='m', desc='Suction side maximum thickness')
+    curv_p = Array(units='m', desc='Suction side maximum thickness')
+    x_tmax = Float(0.0, units='m', desc='chordwise position of maximum thickness')
+    t_skew = Float(0.0, units='m', desc='Chordwise offset between tmax_p and tmax_s')
+    x_tmax_s = Float(0.0, units='m', desc='Chordwise offset between tmax_p and tmax_s')
+    x_tmax_p = Float(0.0, units='m', desc='Chordwise offset between tmax_p and tmax_s')
+
+    def compute_props(self):
+        """
+        calculate basic geometric properties of the airfoil
+        """
+
+        iLE = np.argmin(self.points[:,0])
+        TE = np.max(self.points[:,0])
+        LE = np.min(self.points[:,0])
+
+        # equally spaced point distribution along chord
+        self.x = np.linspace(LE, TE, self.ndiv)
+
+        # interpolate pressure side coordinates
+        yps = NaturalCubicSpline(self.points[:iLE+1, 0][::-1],
+                                 self.points[:iLE+1, 1][::-1])
+        self.yp = np.asarray(yps(self.x), dtype=self.points.dtype)
+        # interpolate suction side coordinates
+        yss = NaturalCubicSpline(self.points[iLE:, 0],
+                                 self.points[iLE:, 1])
+        self.ys = np.asarray(yss(self.x), dtype=self.points.dtype)
+
+        # airfoil thickness distribution
+        self.t = self.ys - self.yp
+
+        self.tmin = self.t.min()
+
+        # chordwise position of tmax
+        tspline = NaturalCubicSpline(self.x, -self.t)
+        res = minimize(tspline, (.3), method='SLSQP', tol=1.e-16)
+        self.tmax = -res['fun']
+        self.x_tmax = res['x'][0]
+
+        # chordwise position of tmax @ pressure side
+        res = minimize(yps, (.3), method='SLSQP', tol=1.e-16)
+        self.res0 = res
+        self.tmax_p = -res['fun']
+        self.x_tmax_p = res['x'][0]
+
+        # chordwise position of tmax @ suction side
+        tspline = NaturalCubicSpline(self.points[iLE:, 0],
+                                    -self.points[iLE:, 1])
+        res = minimize(tspline, (.3), method='SLSQP', tol=1.e-16)
+        self.res1 = res
+        self.tmax_s = -res['fun']
+        self.x_tmax_s = res['x'][0]
+
+
+        # airfoil skewness
+        self.t_skew = self.x_tmax_s-self.x_tmax_p
+
+        # airfoil mean line
+        self.mean = 0.5*(self.yp+self.ys)
+
+        # find mean line angle with chord
+        self.mean_angle = np.zeros(self.ndiv)
+        self.mean_angle[0] = (self.mean[1]-self.mean[0])/\
+                                  (self.x[1]-self.x[0])
+        self.mean_angle[-1] = (self.mean[-1]-self.mean[-2])/\
+                                  (self.x[-1]-self.x[-2])
+        for i in range(1,self.ndiv-1):
+            self.mean_angle[i] = (self.mean[i+1]-self.mean[i-1])/\
+                                 (self.x[i+1]-self.x[i-1])
+        for i in range(self.mean_angle.shape[0]):
+            self.mean_angle[i] = np.math.atan(self.mean_angle[i])*180./np.pi
+
+
+        # suction and pressure side curvature
+        curv = curvature(self.points)
+        curv_p = NaturalCubicSpline(self.points[:iLE+1, 0][::-1], curv[:iLE+1][::-1])
+        curv_s = NaturalCubicSpline(self.points[iLE:, 0], curv[iLE:])
+
+        self.curv_p = curv_p(self.x)
+        self.curv_s = curv_s(self.x)
+
 
 class BlendAirfoilShapes(object):
     """
@@ -366,7 +489,6 @@ class BlendAirfoilShapes(object):
                 points[i, k] = self.f[k][i](tc)
 
         return points
-
 
 
 @base
