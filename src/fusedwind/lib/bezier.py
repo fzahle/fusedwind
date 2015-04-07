@@ -3,7 +3,7 @@ import numpy as np
 from math import factorial
 from scipy.optimize import leastsq
 
-from openmdao.lib.datatypes.api import List, Bool, Array, Instance, Int, Float, VarTree
+from openmdao.lib.datatypes.api import List, Bool, Array, Instance, Int, Float, VarTree, Enum
 from openmdao.main.api import Component
 
 from fusedwind.turbine.geometry_vt import Curve, AirfoilShape, AirfoilShapeWithProps
@@ -82,6 +82,8 @@ class BezierCurve(Curve):
 
 class BezierAirfoilShape(Component):
 
+    exec_mode = Enum('real', ('real', 'complex'), desc='Execute component using real'
+                                                       'or complex number inputs')
     ni = Int(200, iotype='in')
     fix_x = Bool(True, iotype='in')
     symmLE = Bool(True, iotype='in')
@@ -104,7 +106,9 @@ class BezierAirfoilShape(Component):
 
     def execute(self):
 
-        if 'fd' in self.itername and self.fd_form == 'complex_step':
+
+        if 'fd' in self.itername and self.fd_form == 'complex_step' \
+            or self.exec_mode == 'complex':
             self.CPl = np.array(self.CPl, dtype=np.complex128)
             self.CPu = np.array(self.CPu, dtype=np.complex128)
             self.CPle = np.complex128(self.CPle)
