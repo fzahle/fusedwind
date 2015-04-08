@@ -156,7 +156,7 @@ class CrossSectionStructureVT(VariableTree):
     regions = List(desc='List of names of regions in the cross section')
     webs = List(desc='List of names of regions in the cross section')
     materials = Dict(desc='Dictionary of MaterialProps vartrees')
-    airfoil = VarTree(AirfoilShape(), desc='Cross sectional shape')
+    airfoil = Array(desc='Cross sectional shape')
     DPs = List(desc='Region division points (nregion + 1)')
 
     def add_region(self, name):

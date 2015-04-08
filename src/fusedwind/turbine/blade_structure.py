@@ -728,8 +728,7 @@ class BladeStructureCSBuilder(BladeStructureBuilderBase):
             st2d.s = x * self.blade_length
             st2d.DPs = []
             try:
-                airfoil = self.surface.interpolate_profile(x)[:, [0, 1]] * self.blade_length
-                st2d.airfoil.initialize(airfoil)
+                st3d.airfoil = self.surface.interpolate_profile(x)[:, [0, 1]] * self.blade_length
             except:
                 pass
             for ir, rname in enumerate(st3d.regions):
