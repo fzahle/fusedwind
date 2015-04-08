@@ -46,7 +46,7 @@ def curvature(points):
         x2 = d2[0,:]; y2 = d2[1,:]; z2 = d2[2,:]
         curv = ((z2*y1 - y2*z1)**2.0 + (x2*z1 - z2*x1)**2.0 + (y2*x1 - x2*y1)**2.0)**0.5/(x1**2.0 + y1**2.0 + z1**2.0+1.e-30)**(3.0/2.0)
 
-    curvt = np.zeros(points.shape[0])
+    curvt = np.zeros(points.shape[0], dtype=points.dtype)
     try:
         curvt[1:-1] = curv
         curvt[0] = curv[0]
@@ -83,8 +83,8 @@ def calculate_length(In):
     ni, nj = In.shape
     if nj == 2:
         # segment lengths
-        seglen  =np.zeros(In.shape[0]) 
-        curvelen=np.zeros(In.shape[0]) 
+        seglen  =np.zeros(In.shape[0], dtype=In.dtype)
+        curvelen=np.zeros(In.shape[0], dtype=In.dtype)
 
         # calculate length and normals for each segment
         for i in range(1,In.shape[0]):
@@ -94,8 +94,8 @@ def calculate_length(In):
         leng=np.cumsum(seglen)
 
     elif nj ==3:
-        seglen  =np.zeros(In.shape[0]) 
-        curvelen=np.zeros(In.shape[0]) 
+        seglen  =np.zeros(In.shape[0], dtype=In.dtype)
+        curvelen=np.zeros(In.shape[0], dtype=In.dtype)
         for i in range(1,In.shape[0]):
             seglen[i]=((In[i,0]-In[i-1,0])**2.0 \
                       +(In[i,1]-In[i-1,1])**2.0 \

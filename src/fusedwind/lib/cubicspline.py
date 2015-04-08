@@ -40,20 +40,20 @@ class NaturalCubicSpline(object):
     def __call__(self, x, deriv=False):
 
         x, n = _checkIfFloat(x)
-        y = np.zeros(n)
-        dydx = np.zeros(n)
-        dydxp = np.zeros((n, self.m))
-        dydyp = np.zeros((n, self.m))
+        y = np.zeros(n, dtype=self.xp.dtype)
+        dydx = np.zeros(n, dtype=self.xp.dtype)
+        dydxp = np.zeros((n, self.m), dtype=self.xp.dtype)
+        dydyp = np.zeros((n, self.m), dtype=self.xp.dtype)
 
         # find location in vector
         for i in range(n):
-            if x[i] < self.xp[0]:
+            if x[i].real < self.xp[0].real:
                 j = 0
-            elif x[i] > self.xp[-1]:
+            elif x[i].real > self.xp[-1].real:
                 j = self.m-2
             else:
                 for j in range(self.m-1):
-                    if self.xp[j+1] > x[i]:
+                    if self.xp[j+1].real > x[i].real:
                         break
             x1 = self.xp[j]
             y1 = self.yp[j]
