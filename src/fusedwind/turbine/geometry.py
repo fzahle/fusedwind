@@ -450,7 +450,7 @@ class SplinedBladePlanform(Assembly):
     span_ni = Int(50, iotype='in')
 
     pfIn = VarTree(BladePlanformVT(), iotype='in')
-    pfOut = VarTree(BladePlanformVT(), iotype='out')
+    pfOut = VarTree(BladePlanformVT(), iotype='out', copy=None)
 
     def _pre_execute(self):
         super(SplinedBladePlanform, self)._pre_execute()
@@ -460,7 +460,6 @@ class SplinedBladePlanform(Assembly):
             self.blade_length_ref = self.blade_length
 
     def configure_splines(self, spline_type='bezier'):
-
 
         if hasattr(self, 'chord_C'):
             return
@@ -550,8 +549,8 @@ class LoftedBladeSurface(Component):
     rot_order = Array(np.array([2,1,0]),iotype='in',desc='rotation order of airfoil sections'
                                                          'default z,y,x (twist,sweep,dihedral)')
 
-    surfout = VarTree(BladeSurfaceVT(), iotype='out')
-    surfnorot = VarTree(BladeSurfaceVT(), iotype='out')
+    surfout = VarTree(BladeSurfaceVT(), iotype='out', copy=None)
+    surfnorot = VarTree(BladeSurfaceVT(), iotype='out', copy=None)
 
     def __init__(self, chord_ni, span_ni):
         super(LoftedBladeSurface, self).__init__()

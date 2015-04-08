@@ -115,11 +115,11 @@ def configure_bladestructure(cls, file_base, structure_nC=8, structure_ni=12):
     cls.st_reader.filebase = file_base
     cls.st_reader.execute()
 
-    cls.st_splines.st3dIn = cls.st_reader.st3d.copy()
+    cls.st_splines.st3dIn = cls.st_reader.st3d
     cls.st_splines.nC = structure_nC
     cls.st_splines.span_ni = structure_ni
     cls.st_splines.configure_bladestructure()
     cls.st_builder.st3d = cls.st_splines.st3dOut
-    cls.st_builder.surface = cls.blade_surface.surfnorot.copy()
-    cls.st_builder.generate_cs2d(cls.st_reader.st3d.copy())
+    cls.st_builder.surface = cls.blade_surface.surfnorot
+    cls.st_builder.generate_cs2d(cls.st_reader.st3d)
     cls.st_writer.st3d = cls.st_splines.st3dOut

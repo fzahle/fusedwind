@@ -391,7 +391,7 @@ class BeamStructureReader(Component):
     """
 
     filename = Str(iotype='in')
-    beam_structure = VarTree(BeamStructureVT(), iotype='out')
+    beam_structure = VarTree(BeamStructureVT(), iotype='out', copy=None)
 
     def execute(self):
         """  
@@ -503,7 +503,7 @@ class SplinedBladeStructure(Assembly):
     pfOut = VarTree(BladePlanformVT(), iotype='in')
     st3dIn = VarTree(BladeStructureVT3D(), iotype='in',
                                          desc='Vartree containing initial discrete definition of blade structure')
-    st3dOut = VarTree(BladeStructureVT3D(), iotype='out',
+    st3dOut = VarTree(BladeStructureVT3D(), iotype='out', copy=None,
                                          desc='Vartree containing re-splined discrete definition of blade structure')
 
     def __init__(self):
@@ -706,7 +706,7 @@ class BladeStructureCSBuilder(BladeStructureBuilderBase):
     st3d = VarTree(BladeStructureVT3D(), iotype='in', desc='Blade structure definition')
 
     cs2d = List(iotype='out', desc='List of cross-sectional properties'
-                                         'vartrees')
+                                         'vartrees', copy=None)
 
     def execute(self):
 
