@@ -526,6 +526,7 @@ class SplinedBladeStructure(Assembly):
         # self.connect('x', 'pf.x')
         self.connect('x', 'st3dOut.x')
 
+        self.driver.system_type = 'serial'
 
     def configure_bladestructure(self, spline_type='pchip'):
         """

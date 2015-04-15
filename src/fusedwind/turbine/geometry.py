@@ -452,6 +452,11 @@ class SplinedBladePlanform(Assembly):
     pfIn = VarTree(BladePlanformVT(), iotype='in')
     pfOut = VarTree(BladePlanformVT(), iotype='out', copy=None)
 
+    def __init__(self):
+        super(SplinedBladePlanform, self).__init__()
+
+        self.driver.system_type = 'serial'
+
     def _pre_execute(self):
         super(SplinedBladePlanform, self)._pre_execute()
 
