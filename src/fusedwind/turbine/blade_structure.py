@@ -543,7 +543,7 @@ class SplinedBladeStructure(Assembly):
         else:
             self.nC = self.Cx.shape[0]
 
-        self.st3dOut = self.st3dIn.copy()
+        self.add('st3dOut', self.st3dIn.copy())
 
         # initialize output sizes
         self.st3dOut = init_vartree(self.st3dOut, self.span_ni)
